@@ -1,11 +1,11 @@
 .shell {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: var(--layout-sidebar-width) 1fr;
   min-height: 100%;
 }
 
 .content {
-  padding: 2rem 2.5rem;
+  padding: var(--space-8) var(--space-10);
   min-width: 0;
 }
 

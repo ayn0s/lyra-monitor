@@ -8,11 +8,11 @@
 }
 
 .online {
-  background: var(--success);
-  box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.15);
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px var(--color-success-soft);
 }
 
 .offline {
-  background: var(--danger);
-  box-shadow: 0 0 0 3px rgba(248, 81, 73, 0.15);
+  background: var(--color-danger);
+  box-shadow: 0 0 0 3px var(--color-danger-soft);
 }

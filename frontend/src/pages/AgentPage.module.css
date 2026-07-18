@@ -1,59 +1,59 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  max-width: 1100px;
+  gap: var(--space-6);
+  max-width: var(--layout-content-width);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .title {
   font-family: var(--font-mono);
-  font-size: 1.4rem;
+  font-size: var(--font-size-lg);
 }
 
 .subtitle {
-  color: var(--text-muted);
-  margin: 0.35rem 0 0;
+  color: var(--color-text-muted);
+  margin: var(--space-1) 0 0;
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .terminalButton {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid rgba(88, 166, 255, 0.35);
-  padding: 0.55rem 1.1rem;
-  border-radius: var(--radius);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-border);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
   font-weight: 500;
   white-space: nowrap;
 }
 
 .terminalButton:hover {
-  background: rgba(88, 166, 255, 0.2);
+  background: var(--color-accent-hover);
 }
 
 .pingButton {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 0.55rem 1rem;
-  border-radius: var(--radius);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .pingButton:hover {
-  background: var(--bg-hover);
+  background: var(--color-bg-hover);
 }
 
 .pingButton:disabled {
@@ -63,32 +63,32 @@
 
 .pingResult {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.6rem 0.9rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
 }
 
 .pingResult strong {
-  color: var(--success);
+  color: var(--color-success);
 }
 
 .errorBanner {
-  background: rgba(248, 81, 73, 0.1);
-  border: 1px solid rgba(248, 81, 73, 0.3);
-  color: #ffb4ae;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger-text);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
 }
 
 .hint {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 1rem;
+  gap: var(--space-4);
 }
