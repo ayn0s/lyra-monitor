@@ -1,0 +1,19 @@
+[Unit]
+Description=Lyra Monitor Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/lyra-backend
+Restart=on-failure
+RestartSec=2s
+
+Environment=RUST_LOG=info
+EnvironmentFile=-/etc/default/lyra-backend
+
+DynamicUser=yes
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

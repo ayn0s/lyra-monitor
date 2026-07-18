@@ -1,0 +1,19 @@
+services:
+  backend:
+    image: ghcr.io/${GHCR_NAMESPACE}/backend:latest
+    container_name: lyra-backend
+    network_mode: host
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/${GHCR_NAMESPACE}/frontend:latest
+    container_name: lyra-frontend
+    ports:
+      - "8081:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - backend
+    restart: unless-stopped

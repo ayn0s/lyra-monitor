@@ -1,0 +1,161 @@
+mod discovery;
+mod grpc_client;
+#[cfg(feature = "embedded-ui")]
+mod static_files;
+mod ws_bridge;
+
+use axum::{
+    extract::{Path, State, WebSocketUpgrade},
+    response::{IntoResponse, Response},
+    routing::get,
+    Json, Router,
+};
+use discovery::DiscoveredAgents;
+use serde::Serialize;
+use shared::pb::{MetricsRequest, PingRequest};
+use std::net::SocketAddr;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tower_http::cors::CorsLayer;
+use tracing::info;
+
+#[derive(Clone)]
+struct AppState {
+    agents: DiscoveredAgents,
+}
+
+#[derive(Serialize)]
+struct PingResult {
+    nonce: String,
+    server_time_unix_ms: i64,
+    roundtrip_ms: u128,
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
+    let (agents, _mdns_daemon) = discovery::start()?;
+    info!("mDNS agent discovery started");
+
+    let state = AppState { agents };
+
+    let app = Router::new()
+        .route("/api/health", get(health))
+        .route("/api/agents", get(list_agents))
+        .route("/api/agents/:addr/ping", get(ping_agent))
+        .route("/api/agents/:addr/metrics", get(metrics_agent))
+        .route("/ws/terminal/:addr", get(terminal_ws))
+        .layer(CorsLayer::permissive())
+        .with_state(state);
+
+    #[cfg(feature = "embedded-ui")]
+    let app = app.fallback(static_files::serve);
+
+    let addr: SocketAddr = "0.0.0.0:8080".parse()?;
+    info!(%addr, "starting the Axum backend");
+
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+
+    Ok(())
+}
+
+async fn health() -> &'static str {
+    "ok"
+}
+
+async fn list_agents(State(state): State<AppState>) -> Json<serde_json::Value> {
+    let agents = state.agents.read().await;
+    Json(serde_json::json!(*agents))
+}
+
+async fn resolve_agent_uri(state: &AppState, addr: &str) -> Result<String, ApiError> {
+    if addr != "default" {
+        return Ok(format!("http://{addr}"));
+    }
+
+    state
+        .agents
+        .read()
+        .await
+        .values()
+        .next()
+        .cloned()
+        .ok_or_else(|| ApiError(anyhow::anyhow!("no agent discovered via mDNS yet")))
+}
+
+async fn ping_agent(
+    State(state): State<AppState>,
+    Path(addr): Path<String>,
+) -> Result<Json<PingResult>, ApiError> {
+    let uri = resolve_agent_uri(&state, &addr).await?;
+    let mut client = grpc_client::connect(&uri).await.map_err(ApiError)?;
+
+    let started = std::time::Instant::now();
+    let nonce = format!(
+        "{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    );
+
+    let response = client
+        .ping(PingRequest {
+            nonce: nonce.clone(),
+        })
+        .await
+        .map_err(|e| ApiError(anyhow::anyhow!("gRPC Ping failed: {e}")))?
+        .into_inner();
+
+    Ok(Json(PingResult {
+        nonce: response.nonce,
+        server_time_unix_ms: response.server_time_unix_ms,
+        roundtrip_ms: started.elapsed().as_millis(),
+    }))
+}
+
+async fn metrics_agent(
+    State(state): State<AppState>,
+    Path(addr): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let uri = resolve_agent_uri(&state, &addr).await?;
+    let mut client = grpc_client::connect(&uri).await.map_err(ApiError)?;
+
+    let response = client
+        .get_metrics(MetricsRequest {})
+        .await
+        .map_err(|e| ApiError(anyhow::anyhow!("gRPC GetMetrics failed: {e}")))?
+        .into_inner();
+
+    Ok(Json(serde_json::json!({
+        "cpu_usage_percent": response.cpu_usage_percent,
+        "mem_used_bytes": response.mem_used_bytes,
+        "mem_total_bytes": response.mem_total_bytes,
+        "load_average_1m": response.load_average_1m,
+        "uptime_seconds": response.uptime_seconds,
+    })))
+}
+
+async fn terminal_ws(
+    State(state): State<AppState>,
+    Path(addr): Path<String>,
+    ws: WebSocketUpgrade,
+) -> Result<Response, ApiError> {
+    let uri = resolve_agent_uri(&state, &addr).await?;
+    let client = grpc_client::connect(&uri).await.map_err(ApiError)?;
+
+    Ok(ws.on_upgrade(move |socket| ws_bridge::bridge(socket, client)))
+}
+
+struct ApiError(anyhow::Error);
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        (
+            axum::http::StatusCode::BAD_GATEWAY,
+            format!("agent error: {}", self.0),
+        )
+            .into_response()
+    }
+}

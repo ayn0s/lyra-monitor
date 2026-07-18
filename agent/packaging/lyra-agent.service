@@ -1,0 +1,21 @@
+[Unit]
+Description=Lyra Monitor Agent
+After=network-online.target dbus.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/lyra-agent
+Restart=on-failure
+RestartSec=2s
+
+Environment=RUST_LOG=info
+EnvironmentFile=-/etc/default/lyra-agent
+
+User=root
+ProtectSystem=full
+ProtectHome=false
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target
