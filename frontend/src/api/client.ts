@@ -11,7 +11,7 @@ async function getJSON<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-function toAddr(uri: string): string {
+export function toAddr(uri: string): string {
   return uri.replace(/^https?:\/\//, "");
 }
 

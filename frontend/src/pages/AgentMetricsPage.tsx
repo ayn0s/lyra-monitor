@@ -2,20 +2,10 @@ import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useAgentMetrics } from "../hooks/useAgentMetrics";
 import { useMetricsHistory } from "../hooks/useMetricsHistory";
+import { formatBytes, formatUptime } from "../lib/format";
 import MetricTile from "../components/MetricTile";
 import MetricChart from "../components/MetricChart";
 import styles from "./AgentMetricsPage.module.css";
-
-function formatBytes(bytes: number): string {
-  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
-}
-
-function formatUptime(totalSeconds: number): string {
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  return `${days}d ${hours}h ${minutes}m`;
-}
 
 export default function AgentMetricsPage() {
   const { addr = "" } = useParams<{ addr: string }>();

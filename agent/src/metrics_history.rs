@@ -33,15 +33,55 @@ pub fn start() -> MetricsHistory {
                 .unwrap_or(0);
 
             let mut guard = history_task.write().await;
-            if guard.len() >= MAX_SAMPLES {
-                guard.pop_front();
-            }
-            guard.push_back(HistoryEntry {
-                timestamp_unix_ms,
-                raw,
-            });
+            push_bounded(
+                &mut guard,
+                HistoryEntry {
+                    timestamp_unix_ms,
+                    raw,
+                },
+                MAX_SAMPLES,
+            );
         }
     });
 
     history
+}
+
+fn push_bounded<T>(buf: &mut VecDeque<T>, item: T, max: usize) {
+    if buf.len() >= max {
+        buf.pop_front();
+    }
+    buf.push_back(item);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn push_bounded_keeps_items_under_the_cap() {
+        let mut buf = VecDeque::new();
+        push_bounded(&mut buf, 1, 3);
+        push_bounded(&mut buf, 2, 3);
+        assert_eq!(buf, VecDeque::from([1, 2]));
+    }
+
+    #[test]
+    fn push_bounded_evicts_oldest_once_full() {
+        let mut buf = VecDeque::new();
+        for i in 0..5 {
+            push_bounded(&mut buf, i, 3);
+        }
+        assert_eq!(buf, VecDeque::from([2, 3, 4]));
+    }
+
+    #[test]
+    fn push_bounded_never_exceeds_max_len() {
+        let mut buf = VecDeque::new();
+        for i in 0..100 {
+            push_bounded(&mut buf, i, 10);
+            assert!(buf.len() <= 10);
+        }
+        assert_eq!(buf.len(), 10);
+    }
 }

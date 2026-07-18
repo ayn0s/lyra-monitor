@@ -25,6 +25,8 @@ jobs:
         working-directory: frontend
       - run: npx tsc -b --noEmit
         working-directory: frontend
+      - run: npm test
+        working-directory: frontend
 
   frontend-build:
     name: Frontend · build

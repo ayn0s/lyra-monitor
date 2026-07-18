@@ -129,3 +129,55 @@ fn parse_resize(text: &str) -> Option<TerminalInput> {
         })),
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_valid_auth_message() {
+        let input =
+            parse_auth(r#"{"type":"auth","username":"alice","password":"hunter2"}"#).unwrap();
+        match input.payload {
+            Some(Payload::Auth(creds)) => {
+                assert_eq!(creds.username, "alice");
+                assert_eq!(creds.password, "hunter2");
+            }
+            other => panic!("expected Auth payload, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_auth_message_with_wrong_type() {
+        assert!(parse_auth(r#"{"type":"resize","username":"a","password":"b"}"#).is_none());
+    }
+
+    #[test]
+    fn rejects_malformed_auth_json() {
+        assert!(parse_auth("not json").is_none());
+        assert!(parse_auth(r#"{"type":"auth"}"#).is_none());
+    }
+
+    #[test]
+    fn parses_valid_resize_message() {
+        let input = parse_resize(r#"{"type":"resize","cols":80,"rows":24}"#).unwrap();
+        match input.payload {
+            Some(Payload::Resize(resize)) => {
+                assert_eq!(resize.cols, 80);
+                assert_eq!(resize.rows, 24);
+            }
+            other => panic!("expected Resize payload, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_resize_message_with_wrong_type() {
+        assert!(parse_resize(r#"{"type":"auth","cols":80,"rows":24}"#).is_none());
+    }
+
+    #[test]
+    fn rejects_malformed_resize_json() {
+        assert!(parse_resize("not json").is_none());
+        assert!(parse_resize(r#"{"type":"resize"}"#).is_none());
+    }
+}

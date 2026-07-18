@@ -213,6 +213,7 @@ async fn terminal_ws(
     Ok(ws.on_upgrade(move |socket| ws_bridge::bridge(socket, client)))
 }
 
+#[derive(Debug)]
 struct ApiError(anyhow::Error);
 
 impl IntoResponse for ApiError {
@@ -222,5 +223,47 @@ impl IntoResponse for ApiError {
             format!("agent error: {}", self.0),
         )
             .into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+
+    fn state_with_agents(entries: &[(&str, &str)]) -> AppState {
+        let map: HashMap<String, String> = entries
+            .iter()
+            .map(|(name, uri)| (name.to_string(), uri.to_string()))
+            .collect();
+        AppState {
+            agents: Arc::new(RwLock::new(map)),
+        }
+    }
+
+    #[tokio::test]
+    async fn resolves_explicit_addr_without_consulting_discovery() {
+        let state = state_with_agents(&[]);
+        let uri = resolve_agent_uri(&state, "192.168.1.42:50051")
+            .await
+            .unwrap();
+        assert_eq!(uri, "http://192.168.1.42:50051");
+    }
+
+    #[tokio::test]
+    async fn resolves_default_to_the_only_discovered_agent() {
+        let state =
+            state_with_agents(&[("agent1._lyra-agent._tcp.local.", "http://10.0.0.5:50051")]);
+        let uri = resolve_agent_uri(&state, "default").await.unwrap();
+        assert_eq!(uri, "http://10.0.0.5:50051");
+    }
+
+    #[tokio::test]
+    async fn default_fails_when_no_agent_discovered() {
+        let state = state_with_agents(&[]);
+        let result = resolve_agent_uri(&state, "default").await;
+        assert!(result.is_err());
     }
 }
