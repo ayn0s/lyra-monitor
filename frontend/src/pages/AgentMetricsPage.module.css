@@ -21,3 +21,9 @@
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--space-4);
 }
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
+}

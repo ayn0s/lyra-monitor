@@ -12,7 +12,7 @@ use axum::{
 };
 use discovery::DiscoveredAgents;
 use serde::Serialize;
-use shared::pb::{ListServicesRequest, MetricsRequest, PingRequest};
+use shared::pb::{GetMetricsHistoryRequest, ListServicesRequest, MetricsRequest, PingRequest};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tower_http::cors::CorsLayer;
@@ -44,6 +44,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/agents", get(list_agents))
         .route("/api/agents/:addr/ping", get(ping_agent))
         .route("/api/agents/:addr/metrics", get(metrics_agent))
+        .route(
+            "/api/agents/:addr/metrics/history",
+            get(metrics_history_agent),
+        )
         .route("/api/agents/:addr/services", get(services_agent))
         .route("/ws/terminal/:addr", get(terminal_ws))
         .layer(CorsLayer::permissive())
@@ -136,6 +140,36 @@ async fn metrics_agent(
         "load_average_1m": response.load_average_1m,
         "uptime_seconds": response.uptime_seconds,
     })))
+}
+
+async fn metrics_history_agent(
+    State(state): State<AppState>,
+    Path(addr): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let uri = resolve_agent_uri(&state, &addr).await?;
+    let mut client = grpc_client::connect(&uri).await.map_err(ApiError)?;
+
+    let response = client
+        .get_metrics_history(GetMetricsHistoryRequest {})
+        .await
+        .map_err(|e| ApiError(anyhow::anyhow!("gRPC GetMetricsHistory failed: {e}")))?
+        .into_inner();
+
+    let samples: Vec<serde_json::Value> = response
+        .samples
+        .into_iter()
+        .map(|sample| {
+            serde_json::json!({
+                "timestamp_unix_ms": sample.timestamp_unix_ms,
+                "cpu_usage_percent": sample.cpu_usage_percent,
+                "mem_used_bytes": sample.mem_used_bytes,
+                "mem_total_bytes": sample.mem_total_bytes,
+                "load_average_1m": sample.load_average_1m,
+            })
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!(samples)))
 }
 
 async fn services_agent(

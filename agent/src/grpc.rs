@@ -1,17 +1,19 @@
-use crate::{metrics, pty::PtySession, systemd};
+use crate::{metrics, metrics_history::MetricsHistory, pty::PtySession, systemd};
 use futures::Stream;
 use shared::pb::agent_service_server::AgentService;
 use shared::pb::terminal_input::Payload;
 use shared::pb::{
-    ListServicesRequest, ListServicesResponse, MetricsRequest, MetricsResponse, PingRequest,
-    PingResponse, ServiceUnit, TerminalInput, TerminalOutput,
+    GetMetricsHistoryRequest, GetMetricsHistoryResponse, ListServicesRequest, ListServicesResponse,
+    MetricsRequest, MetricsResponse, MetricsSample, PingRequest, PingResponse, ServiceUnit,
+    TerminalInput, TerminalOutput,
 };
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tonic::{Request, Response, Status, Streaming};
 
-#[derive(Default)]
-pub struct AgentServiceImpl;
+pub struct AgentServiceImpl {
+    pub history: MetricsHistory,
+}
 
 type TerminalStream = Pin<Box<dyn Stream<Item = Result<TerminalOutput, Status>> + Send + 'static>>;
 
@@ -46,6 +48,25 @@ impl AgentService for AgentServiceImpl {
             load_average_1m: raw.load_average_1m,
             uptime_seconds: raw.uptime_seconds,
         }))
+    }
+
+    async fn get_metrics_history(
+        &self,
+        _request: Request<GetMetricsHistoryRequest>,
+    ) -> Result<Response<GetMetricsHistoryResponse>, Status> {
+        let history = self.history.read().await;
+        let samples = history
+            .iter()
+            .map(|entry| MetricsSample {
+                timestamp_unix_ms: entry.timestamp_unix_ms,
+                cpu_usage_percent: entry.raw.cpu_usage_percent,
+                mem_used_bytes: entry.raw.mem_used_bytes,
+                mem_total_bytes: entry.raw.mem_total_bytes,
+                load_average_1m: entry.raw.load_average_1m,
+            })
+            .collect();
+
+        Ok(Response::new(GetMetricsHistoryResponse { samples }))
     }
 
     async fn list_services(

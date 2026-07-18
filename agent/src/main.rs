@@ -2,6 +2,7 @@ mod dbus;
 mod discovery;
 mod grpc;
 mod metrics;
+mod metrics_history;
 mod pam_auth;
 mod pty;
 mod systemd;
@@ -41,9 +42,11 @@ async fn main() -> Result<()> {
         }
     }
 
+    let history = metrics_history::start();
+
     info!(%addr, "starting the agent's gRPC server");
     Server::builder()
-        .add_service(AgentServiceServer::new(AgentServiceImpl))
+        .add_service(AgentServiceServer::new(AgentServiceImpl { history }))
         .serve(addr)
         .await?;
 

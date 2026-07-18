@@ -18,6 +18,14 @@ export interface AgentMetrics {
   uptime_seconds: number;
 }
 
+export interface MetricsSample {
+  timestamp_unix_ms: number;
+  cpu_usage_percent: number;
+  mem_used_bytes: number;
+  mem_total_bytes: number;
+  load_average_1m: number;
+}
+
 export interface ServiceUnit {
   name: string;
   description: string;

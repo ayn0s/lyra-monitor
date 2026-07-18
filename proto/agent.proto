@@ -7,6 +7,8 @@ service AgentService {
 
   rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
 
+  rpc GetMetricsHistory(GetMetricsHistoryRequest) returns (GetMetricsHistoryResponse);
+
   rpc ListServices(ListServicesRequest) returns (ListServicesResponse);
 
   rpc StreamTerminal(stream TerminalInput) returns (stream TerminalOutput);
@@ -29,6 +31,20 @@ message MetricsResponse {
   uint64 mem_total_bytes = 3;
   double load_average_1m = 4;
   uint64 uptime_seconds = 5;
+}
+
+message GetMetricsHistoryRequest {}
+
+message MetricsSample {
+  int64 timestamp_unix_ms = 1;
+  double cpu_usage_percent = 2;
+  uint64 mem_used_bytes = 3;
+  uint64 mem_total_bytes = 4;
+  double load_average_1m = 5;
+}
+
+message GetMetricsHistoryResponse {
+  repeated MetricsSample samples = 1;
 }
 
 message ListServicesRequest {}

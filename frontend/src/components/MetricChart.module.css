@@ -1,0 +1,32 @@
+.chart {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+}
+
+.title {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-2);
+}
+
+.plot {
+  width: 100%;
+}
+
+.plot :global(.u-legend) {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.plot :global(.u-legend .u-value) {
+  color: var(--color-text);
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}

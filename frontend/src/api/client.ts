@@ -1,4 +1,4 @@
-import type { AgentInfo, AgentMetrics, PingResult, ServiceUnit } from "./types";
+import type { AgentInfo, AgentMetrics, MetricsSample, PingResult, ServiceUnit } from "./types";
 
 const API_BASE = "/api";
 
@@ -28,6 +28,10 @@ export function pingAgent(addr: string): Promise<PingResult> {
 
 export function getAgentMetrics(addr: string): Promise<AgentMetrics> {
   return getJSON<AgentMetrics>(`${API_BASE}/agents/${addr}/metrics`);
+}
+
+export function getAgentMetricsHistory(addr: string): Promise<MetricsSample[]> {
+  return getJSON<MetricsSample[]>(`${API_BASE}/agents/${addr}/metrics/history`);
 }
 
 export function getAgentServices(addr: string): Promise<ServiceUnit[]> {
