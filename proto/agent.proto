@@ -65,7 +65,13 @@ message TerminalInput {
   oneof payload {
     bytes stdin = 1;
     PtyResize resize = 2;
+    AuthCredentials auth = 3;
   }
+}
+
+message AuthCredentials {
+  string username = 1;
+  string password = 2;
 }
 
 message PtyResize {

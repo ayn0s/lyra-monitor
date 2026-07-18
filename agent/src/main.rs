@@ -14,9 +14,6 @@ use shared::DEFAULT_AGENT_GRPC_PORT;
 use tonic::transport::Server;
 use tracing::info;
 
-#[allow(unused_imports)]
-use pam_auth::authenticate;
-
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();

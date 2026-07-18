@@ -1,4 +1,4 @@
-use crate::{metrics, metrics_history::MetricsHistory, pty::PtySession, systemd};
+use crate::{metrics, metrics_history::MetricsHistory, pam_auth, pty::PtySession, systemd};
 use futures::Stream;
 use shared::pb::agent_service_server::AgentService;
 use shared::pb::terminal_input::Payload;
@@ -97,7 +97,29 @@ impl AgentService for AgentServiceImpl {
     ) -> Result<Response<Self::StreamTerminalStream>, Status> {
         let mut inbound = request.into_inner();
 
-        let session = PtySession::spawn()
+        let first = inbound
+            .message()
+            .await
+            .map_err(|e| Status::internal(format!("failed to read terminal input: {e}")))?
+            .ok_or_else(|| Status::invalid_argument("expected credentials as first message"))?;
+
+        let Some(Payload::Auth(creds)) = first.payload else {
+            return Err(Status::invalid_argument(
+                "first message must be authentication credentials",
+            ));
+        };
+
+        let username = creds.username;
+        let password = creds.password;
+        tokio::task::spawn_blocking({
+            let username = username.clone();
+            move || pam_auth::authenticate(&username, &password)
+        })
+        .await
+        .map_err(|e| Status::internal(format!("authentication task cancelled: {e}")))?
+        .map_err(|e| Status::unauthenticated(format!("{e}")))?;
+
+        let session = PtySession::spawn(&username)
             .map_err(|e| Status::internal(format!("failed to create PTY: {e}")))?;
         let PtySession {
             stdin_tx,
@@ -114,7 +136,7 @@ impl AgentService for AgentServiceImpl {
                     Some(Payload::Resize(resize)) => {
                         let _ = resize_tx.send((resize.cols as u16, resize.rows as u16));
                     }
-                    None => {}
+                    _ => {}
                 }
             }
         });

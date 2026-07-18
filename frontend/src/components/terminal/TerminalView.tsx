@@ -7,9 +7,11 @@ import styles from "./TerminalView.module.css";
 
 interface TerminalViewProps {
   addr: string;
+  username: string;
+  password: string;
 }
 
-export default function TerminalView({ addr }: TerminalViewProps) {
+export default function TerminalView({ addr, username, password }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -34,13 +36,18 @@ export default function TerminalView({ addr }: TerminalViewProps) {
     socket.binaryType = "arraybuffer";
 
     socket.onopen = () => {
-      term.writeln(`[lyra] connected to ${addr}, PTY session open.`);
+      term.writeln(`[lyra] connecting to ${addr} as ${username}…`);
+      socket.send(JSON.stringify({ type: "auth", username, password }));
       sendResize();
     };
     socket.onclose = () => term.writeln("\r\n[lyra] connection closed.");
     socket.onerror = () => term.writeln("\r\n[lyra] WebSocket connection error.");
 
     socket.onmessage = (event) => {
+      if (typeof event.data === "string") {
+        term.writeln(`\r\n${event.data}`);
+        return;
+      }
       term.write(new Uint8Array(event.data as ArrayBuffer));
     };
 
@@ -68,7 +75,7 @@ export default function TerminalView({ addr }: TerminalViewProps) {
       socket.close();
       term.dispose();
     };
-  }, [addr]);
+  }, [addr, username, password]);
 
   return <div ref={containerRef} className={styles.terminal} />;
 }

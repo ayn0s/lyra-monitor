@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use pam::Client;
 
-#[allow(dead_code)]
 pub fn authenticate(username: &str, password: &str) -> Result<()> {
     let mut client = Client::with_password("login").map_err(|e| anyhow!("PAM init failed: {e}"))?;
 
@@ -12,10 +11,6 @@ pub fn authenticate(username: &str, password: &str) -> Result<()> {
     client
         .authenticate()
         .map_err(|e| anyhow!("PAM authentication failed: {e}"))?;
-
-    client
-        .open_session()
-        .map_err(|e| anyhow!("failed to open PAM session: {e}"))?;
 
     Ok(())
 }

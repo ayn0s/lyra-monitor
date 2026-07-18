@@ -12,7 +12,7 @@ pub struct PtySession {
 }
 
 impl PtySession {
-    pub fn spawn() -> Result<Self> {
+    pub fn spawn(username: &str) -> Result<Self> {
         let pty_system = native_pty_system();
         let pair = pty_system
             .openpty(PtySize {
@@ -23,11 +23,12 @@ impl PtySession {
             })
             .context("opening PTY")?;
 
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-        let cmd = CommandBuilder::new(shell);
+        let mut cmd = CommandBuilder::new("su");
+        cmd.arg("-l");
+        cmd.arg(username);
         pair.slave
             .spawn_command(cmd)
-            .context("starting shell in PTY")?;
+            .context("starting login shell in PTY")?;
         drop(pair.slave);
 
         let mut reader = pair
@@ -98,6 +99,7 @@ impl PtySession {
                     .resize_tx
                     .send((resize.cols as u16, resize.rows as u16));
             }
+            Payload::Auth(_) => {}
         }
     }
 }
