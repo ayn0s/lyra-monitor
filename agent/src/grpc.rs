@@ -1,9 +1,10 @@
-use crate::{metrics, pty::PtySession};
+use crate::{metrics, pty::PtySession, systemd};
 use futures::Stream;
 use shared::pb::agent_service_server::AgentService;
 use shared::pb::terminal_input::Payload;
 use shared::pb::{
-    MetricsRequest, MetricsResponse, PingRequest, PingResponse, TerminalInput, TerminalOutput,
+    ListServicesRequest, ListServicesResponse, MetricsRequest, MetricsResponse, PingRequest,
+    PingResponse, ServiceUnit, TerminalInput, TerminalOutput,
 };
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -45,6 +46,26 @@ impl AgentService for AgentServiceImpl {
             load_average_1m: raw.load_average_1m,
             uptime_seconds: raw.uptime_seconds,
         }))
+    }
+
+    async fn list_services(
+        &self,
+        _request: Request<ListServicesRequest>,
+    ) -> Result<Response<ListServicesResponse>, Status> {
+        let services = systemd::list_services()
+            .await
+            .map_err(|e| Status::internal(format!("failed to list services: {e}")))?
+            .into_iter()
+            .map(|unit| ServiceUnit {
+                name: unit.name,
+                description: unit.description,
+                load_state: unit.load_state,
+                active_state: unit.active_state,
+                sub_state: unit.sub_state,
+            })
+            .collect();
+
+        Ok(Response::new(ListServicesResponse { services }))
     }
 
     type StreamTerminalStream = TerminalStream;

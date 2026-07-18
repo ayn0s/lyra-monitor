@@ -12,7 +12,7 @@ use axum::{
 };
 use discovery::DiscoveredAgents;
 use serde::Serialize;
-use shared::pb::{MetricsRequest, PingRequest};
+use shared::pb::{ListServicesRequest, MetricsRequest, PingRequest};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tower_http::cors::CorsLayer;
@@ -44,6 +44,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/agents", get(list_agents))
         .route("/api/agents/:addr/ping", get(ping_agent))
         .route("/api/agents/:addr/metrics", get(metrics_agent))
+        .route("/api/agents/:addr/services", get(services_agent))
         .route("/ws/terminal/:addr", get(terminal_ws))
         .layer(CorsLayer::permissive())
         .with_state(state);
@@ -135,6 +136,36 @@ async fn metrics_agent(
         "load_average_1m": response.load_average_1m,
         "uptime_seconds": response.uptime_seconds,
     })))
+}
+
+async fn services_agent(
+    State(state): State<AppState>,
+    Path(addr): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let uri = resolve_agent_uri(&state, &addr).await?;
+    let mut client = grpc_client::connect(&uri).await.map_err(ApiError)?;
+
+    let response = client
+        .list_services(ListServicesRequest {})
+        .await
+        .map_err(|e| ApiError(anyhow::anyhow!("gRPC ListServices failed: {e}")))?
+        .into_inner();
+
+    let services: Vec<serde_json::Value> = response
+        .services
+        .into_iter()
+        .map(|unit| {
+            serde_json::json!({
+                "name": unit.name,
+                "description": unit.description,
+                "load_state": unit.load_state,
+                "active_state": unit.active_state,
+                "sub_state": unit.sub_state,
+            })
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!(services)))
 }
 
 async fn terminal_ws(

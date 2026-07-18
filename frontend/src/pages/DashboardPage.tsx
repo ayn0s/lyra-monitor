@@ -36,7 +36,7 @@ export default function DashboardPage() {
 
       <div className={styles.grid}>
         {agents.map((agent) => (
-          <Link to={`/agents/${agent.addr}`} key={agent.fullname} className={styles.card}>
+          <Link to={`/agents/${agent.addr}/metrics`} key={agent.fullname} className={styles.card}>
             <div className={styles.cardHeader}>
               <StatusDot online />
               <span className={styles.cardTitle}>{agent.fullname.split(".")[0]}</span>

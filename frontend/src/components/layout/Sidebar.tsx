@@ -34,7 +34,7 @@ export default function Sidebar() {
         <ul className={styles.agentList}>
           {agents.map((agent) => (
             <li key={agent.fullname}>
-              <NavLink to={`/agents/${agent.addr}`} className={navLinkClass}>
+              <NavLink to={`/agents/${agent.addr}/metrics`} className={navLinkClass}>
                 <StatusDot online />
                 <span className={styles.agentName}>{agent.fullname.split(".")[0]}</span>
               </NavLink>

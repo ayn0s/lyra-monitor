@@ -1,0 +1,82 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.errorBanner {
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger-text);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.hint {
+  color: var(--color-text-muted);
+}
+
+.filter {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  width: 100%;
+  max-width: 320px;
+}
+
+.filter:focus {
+  outline: 1px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.table th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: var(--color-bg-elevated);
+}
+
+.name {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.description {
+  color: var(--color-text-muted);
+}
+
+.state {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}

@@ -17,3 +17,11 @@ export interface AgentMetrics {
   load_average_1m: number;
   uptime_seconds: number;
 }
+
+export interface ServiceUnit {
+  name: string;
+  description: string;
+  load_state: string;
+  active_state: string;
+  sub_state: string;
+}

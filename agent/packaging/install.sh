@@ -39,17 +39,15 @@ else
     fi
   }
 
-  if [[ ! -x "$BUILT_BIN" ]]; then
-    if ! command -v cargo >/dev/null 2>&1; then
-      echo "cargo not found. Install Rust (https://rustup.rs) then rerun this script." >&2
-      exit 1
-    fi
-
-    ensure_build_deps
-
-    echo "==> Building the agent (cargo build --release -p agent)"
-    (cd "$REPO_ROOT" && cargo build --release -p agent)
+  if ! command -v cargo >/dev/null 2>&1; then
+    echo "cargo not found. Install Rust (https://rustup.rs) then rerun this script." >&2
+    exit 1
   fi
+
+  ensure_build_deps
+
+  echo "==> Building the agent (cargo build --release -p agent)"
+  (cd "$REPO_ROOT" && cargo build --release -p agent)
 fi
 
 echo "==> Stopping the existing service (if any)"

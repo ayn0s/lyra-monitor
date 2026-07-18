@@ -1,8 +1,10 @@
 .page {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   gap: var(--space-6);
-  max-width: var(--layout-content-width);
+  max-width: var(--layout-content-width-wide);
 }
 
 .header {
@@ -26,20 +28,6 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-
-.terminalButton {
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  border: 1px solid var(--color-accent-border);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.terminalButton:hover {
-  background: var(--color-accent-hover);
 }
 
 .pingButton {
@@ -83,12 +71,33 @@
   border-radius: var(--radius-md);
 }
 
-.hint {
-  color: var(--color-text-muted);
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--space-4);
+.tab,
+.tabActive {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.tabActive {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.outlet {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }

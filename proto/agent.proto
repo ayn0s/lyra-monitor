@@ -7,6 +7,8 @@ service AgentService {
 
   rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
 
+  rpc ListServices(ListServicesRequest) returns (ListServicesResponse);
+
   rpc StreamTerminal(stream TerminalInput) returns (stream TerminalOutput);
 }
 
@@ -27,6 +29,20 @@ message MetricsResponse {
   uint64 mem_total_bytes = 3;
   double load_average_1m = 4;
   uint64 uptime_seconds = 5;
+}
+
+message ListServicesRequest {}
+
+message ServiceUnit {
+  string name = 1;
+  string description = 2;
+  string load_state = 3;
+  string active_state = 4;
+  string sub_state = 5;
+}
+
+message ListServicesResponse {
+  repeated ServiceUnit services = 1;
 }
 
 message TerminalInput {

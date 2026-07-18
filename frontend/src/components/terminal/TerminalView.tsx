@@ -28,7 +28,7 @@ export default function TerminalView({ addr }: TerminalViewProps) {
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
-    fitAddon.fit();
+    requestAnimationFrame(() => fitAddon.fit());
 
     const socket = new WebSocket(terminalWsUrl(addr));
     socket.binaryType = "arraybuffer";

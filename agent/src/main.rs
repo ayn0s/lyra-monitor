@@ -4,6 +4,7 @@ mod grpc;
 mod metrics;
 mod pam_auth;
 mod pty;
+mod systemd;
 
 use anyhow::Result;
 use grpc::AgentServiceImpl;
