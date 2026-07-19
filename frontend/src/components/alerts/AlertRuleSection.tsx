@@ -1,3 +1,4 @@
+import { Pause, Play } from "lucide-react";
 import { useState } from "react";
 import { createAlertRule, deleteAlertRule, updateAlertRule } from "../../api/client";
 import type { AgentInfo, AlertCondition, AlertRule, WebhookTarget } from "../../api/types";
@@ -163,9 +164,12 @@ export default function AlertRuleSection({
       {rules.length > 0 && (
         <ul className={styles.list}>
           {rules.map((rule) => (
-            <li key={rule.id} className={styles.item}>
+            <li key={rule.id} className={rule.enabled ? styles.item : styles.itemPaused}>
               <div className={styles.itemMain}>
-                <span className={styles.itemName}>{rule.name}</span>
+                <span className={styles.itemName}>
+                  {rule.name}
+                  {!rule.enabled && <span className={styles.pausedBadge}>paused</span>}
+                </span>
                 <span className={styles.itemDetail}>{describeCondition(rule.condition)}</span>
                 <span className={styles.itemDetail}>
                   {rule.agent_addr ?? "all agents"} · cooldown {rule.cooldown_seconds}s
@@ -177,10 +181,17 @@ export default function AlertRuleSection({
                 )}
               </div>
               <div className={styles.itemActions}>
-                <label className={styles.toggle}>
-                  <input type="checkbox" checked={rule.enabled} onChange={() => handleToggle(rule)} />
-                  enabled
-                </label>
+                <button type="button" className={styles.smallButton} onClick={() => handleToggle(rule)}>
+                  {rule.enabled ? (
+                    <>
+                      <Pause size={13} /> Pause
+                    </>
+                  ) : (
+                    <>
+                      <Play size={13} /> Resume
+                    </>
+                  )}
+                </button>
                 <button type="button" className={styles.smallButton} onClick={() => startEdit(rule)}>
                   Edit
                 </button>

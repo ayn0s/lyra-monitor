@@ -18,6 +18,9 @@ body {
   color: var(--color-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
 
 a {

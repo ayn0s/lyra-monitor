@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useAgents } from "../../hooks/useAgents";
 import StatusDot from "../StatusDot";
+import ThemeToggle from "../ThemeToggle";
 import styles from "./Sidebar.module.css";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -44,6 +45,10 @@ export default function Sidebar() {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className={styles.footer}>
+        <ThemeToggle />
       </div>
     </aside>
   );

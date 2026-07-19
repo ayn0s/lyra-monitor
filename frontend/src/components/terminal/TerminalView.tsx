@@ -3,6 +3,7 @@ import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { terminalWsUrl } from "../../api/client";
+import { useTheme } from "../../hooks/useTheme";
 import styles from "./TerminalView.module.css";
 
 interface TerminalViewProps {
@@ -11,8 +12,19 @@ interface TerminalViewProps {
   password: string;
 }
 
+function resolveXtermTheme() {
+  const style = getComputedStyle(document.documentElement);
+  return {
+    background: style.getPropertyValue("--color-bg-terminal").trim(),
+    foreground: style.getPropertyValue("--color-text-terminal").trim(),
+    cursor: style.getPropertyValue("--color-accent").trim(),
+  };
+}
+
 export default function TerminalView({ addr, username, password }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const termRef = useRef<XTerm | null>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (!containerRef.current || !addr) return;
@@ -21,12 +33,9 @@ export default function TerminalView({ addr, username, password }: TerminalViewP
       cursorBlink: true,
       fontFamily: "ui-monospace, Menlo, Consolas, monospace",
       fontSize: 14,
-      theme: {
-        background: "#0d1117",
-        foreground: "#c9d1d9",
-        cursor: "#58a6ff",
-      },
+      theme: resolveXtermTheme(),
     });
+    termRef.current = term;
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
@@ -74,8 +83,15 @@ export default function TerminalView({ addr, username, password }: TerminalViewP
       onDataDisposable.dispose();
       socket.close();
       term.dispose();
+      termRef.current = null;
     };
   }, [addr, username, password]);
+
+  useEffect(() => {
+    if (termRef.current) {
+      termRef.current.options.theme = resolveXtermTheme();
+    }
+  }, [theme]);
 
   return <div ref={containerRef} className={styles.terminal} />;
 }

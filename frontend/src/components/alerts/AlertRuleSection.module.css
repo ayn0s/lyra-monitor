@@ -50,6 +50,11 @@
   border-radius: var(--radius-sm);
 }
 
+.itemPaused {
+  composes: item;
+  opacity: 0.6;
+}
+
 .itemMain {
   display: flex;
   flex-direction: column;
@@ -59,6 +64,21 @@
 
 .itemName {
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pausedBadge {
+  text-transform: uppercase;
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
 }
 
 .itemDetail {
@@ -77,18 +97,12 @@
   gap: var(--space-3);
 }
 
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
 .smallButton,
 .dangerButton,
 .primaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   color: var(--color-text);
