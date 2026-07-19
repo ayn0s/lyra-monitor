@@ -20,6 +20,9 @@ export default function Sidebar() {
         <NavLink to="/" end className={navLinkClass}>
           Dashboard
         </NavLink>
+        <NavLink to="/alerts" className={navLinkClass}>
+          Alerts
+        </NavLink>
       </nav>
 
       <div className={styles.section}>

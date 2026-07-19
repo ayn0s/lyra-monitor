@@ -1,19 +1,22 @@
+mod alerts;
 mod discovery;
 mod grpc_client;
 #[cfg(feature = "embedded-ui")]
 mod static_files;
 mod ws_bridge;
 
+use alerts::{AlertEvent, AlertRule, AlertsStore, WebhookTarget};
 use axum::{
     extract::{Path, State, WebSocketUpgrade},
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use discovery::DiscoveredAgents;
 use serde::Serialize;
 use shared::pb::{GetMetricsHistoryRequest, ListServicesRequest, MetricsRequest, PingRequest};
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tower_http::cors::CorsLayer;
 use tracing::info;
@@ -21,6 +24,13 @@ use tracing::info;
 #[derive(Clone)]
 struct AppState {
     agents: DiscoveredAgents,
+    alerts: AlertsStore,
+}
+
+fn data_dir() -> PathBuf {
+    std::env::var("STATE_DIRECTORY")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."))
 }
 
 #[derive(Serialize)]
@@ -37,7 +47,15 @@ async fn main() -> anyhow::Result<()> {
     let (agents, _mdns_daemon) = discovery::start()?;
     info!("mDNS agent discovery started");
 
-    let state = AppState { agents };
+    let alerts_config_path = data_dir().join("alerts.json");
+    let alerts_store = AlertsStore::load(alerts_config_path).await;
+    alerts::spawn_evaluator(alerts_store.clone(), agents.clone());
+    info!("alert evaluator started");
+
+    let state = AppState {
+        agents,
+        alerts: alerts_store,
+    };
 
     let app = Router::new()
         .route("/api/health", get(health))
@@ -50,6 +68,20 @@ async fn main() -> anyhow::Result<()> {
         )
         .route("/api/agents/:addr/services", get(services_agent))
         .route("/ws/terminal/:addr", get(terminal_ws))
+        .route("/api/webhooks", get(list_webhooks).post(create_webhook))
+        .route(
+            "/api/webhooks/:id",
+            axum::routing::put(update_webhook).delete(delete_webhook),
+        )
+        .route("/api/webhooks/:id/test", post(test_webhook))
+        .route(
+            "/api/alert-rules",
+            get(list_alert_rules).post(create_alert_rule),
+        )
+        .route(
+            "/api/alert-rules/:id",
+            axum::routing::put(update_alert_rule).delete(delete_alert_rule),
+        )
         .layer(CorsLayer::permissive())
         .with_state(state);
 
@@ -217,6 +249,123 @@ async fn terminal_ws(
     Ok(ws.on_upgrade(move |socket| ws_bridge::bridge(socket, client)))
 }
 
+async fn list_webhooks(State(state): State<AppState>) -> Json<Vec<WebhookTarget>> {
+    Json(state.alerts.list_webhooks().await)
+}
+
+async fn create_webhook(
+    State(state): State<AppState>,
+    Json(webhook): Json<WebhookTarget>,
+) -> Result<Json<WebhookTarget>, ApiError> {
+    let created = state
+        .alerts
+        .create_webhook(webhook)
+        .await
+        .map_err(ApiError)?;
+    Ok(Json(created))
+}
+
+async fn update_webhook(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(webhook): Json<WebhookTarget>,
+) -> Result<Json<WebhookTarget>, ApiError> {
+    state
+        .alerts
+        .update_webhook(&id, webhook)
+        .await
+        .map_err(ApiError)?
+        .map(Json)
+        .ok_or_else(|| ApiError(anyhow::anyhow!("webhook not found")))
+}
+
+async fn delete_webhook(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let removed = state.alerts.delete_webhook(&id).await.map_err(ApiError)?;
+    if !removed {
+        return Err(ApiError(anyhow::anyhow!("webhook not found")));
+    }
+    Ok(Json(serde_json::json!({ "deleted": true })))
+}
+
+async fn test_webhook(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let webhook = state
+        .alerts
+        .get_webhook(&id)
+        .await
+        .ok_or_else(|| ApiError(anyhow::anyhow!("webhook not found")))?;
+
+    let event = AlertEvent {
+        rule_name: "Test alert".to_string(),
+        agent_addr: None,
+        message: "This is a test notification from Lyra Monitor.".to_string(),
+        triggered_at_unix_ms: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as i64,
+    };
+
+    let client = reqwest::Client::new();
+    alerts::send_webhook(&client, &webhook, &event)
+        .await
+        .map_err(ApiError)?;
+
+    Ok(Json(serde_json::json!({ "sent": true })))
+}
+
+async fn list_alert_rules(State(state): State<AppState>) -> Json<Vec<AlertRule>> {
+    Json(state.alerts.list_rules().await)
+}
+
+fn validate_rule(rule: &AlertRule) -> Result<(), ApiError> {
+    if rule.condition.requires_specific_agent() && rule.agent_addr.is_none() {
+        return Err(ApiError(anyhow::anyhow!(
+            "this condition requires a specific agent to be selected"
+        )));
+    }
+    Ok(())
+}
+
+async fn create_alert_rule(
+    State(state): State<AppState>,
+    Json(rule): Json<AlertRule>,
+) -> Result<Json<AlertRule>, ApiError> {
+    validate_rule(&rule)?;
+    let created = state.alerts.create_rule(rule).await.map_err(ApiError)?;
+    Ok(Json(created))
+}
+
+async fn update_alert_rule(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(rule): Json<AlertRule>,
+) -> Result<Json<AlertRule>, ApiError> {
+    validate_rule(&rule)?;
+    state
+        .alerts
+        .update_rule(&id, rule)
+        .await
+        .map_err(ApiError)?
+        .map(Json)
+        .ok_or_else(|| ApiError(anyhow::anyhow!("alert rule not found")))
+}
+
+async fn delete_alert_rule(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let removed = state.alerts.delete_rule(&id).await.map_err(ApiError)?;
+    if !removed {
+        return Err(ApiError(anyhow::anyhow!("alert rule not found")));
+    }
+    Ok(Json(serde_json::json!({ "deleted": true })))
+}
+
 #[derive(Debug)]
 struct ApiError(anyhow::Error);
 
@@ -237,19 +386,26 @@ mod tests {
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
-    fn state_with_agents(entries: &[(&str, &str)]) -> AppState {
+    async fn state_with_agents(entries: &[(&str, &str)]) -> AppState {
         let map: HashMap<String, String> = entries
             .iter()
             .map(|(name, uri)| (name.to_string(), uri.to_string()))
             .collect();
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let mut path = std::env::temp_dir();
+        path.push(format!("lyra-alerts-main-test-{nanos}.json"));
         AppState {
             agents: Arc::new(RwLock::new(map)),
+            alerts: AlertsStore::load(path).await,
         }
     }
 
     #[tokio::test]
     async fn resolves_explicit_addr_without_consulting_discovery() {
-        let state = state_with_agents(&[]);
+        let state = state_with_agents(&[]).await;
         let uri = resolve_agent_uri(&state, "192.168.1.42:50051")
             .await
             .unwrap();
@@ -259,14 +415,14 @@ mod tests {
     #[tokio::test]
     async fn resolves_default_to_the_only_discovered_agent() {
         let state =
-            state_with_agents(&[("agent1._lyra-agent._tcp.local.", "http://10.0.0.5:50051")]);
+            state_with_agents(&[("agent1._lyra-agent._tcp.local.", "http://10.0.0.5:50051")]).await;
         let uri = resolve_agent_uri(&state, "default").await.unwrap();
         assert_eq!(uri, "http://10.0.0.5:50051");
     }
 
     #[tokio::test]
     async fn default_fails_when_no_agent_discovered() {
-        let state = state_with_agents(&[]);
+        let state = state_with_agents(&[]).await;
         let result = resolve_agent_uri(&state, "default").await;
         assert!(result.is_err());
     }

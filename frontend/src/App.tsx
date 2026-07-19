@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage";
 import AgentMetricsPage from "./pages/AgentMetricsPage";
 import AgentServicesPage from "./pages/AgentServicesPage";
 import AgentTerminalPage from "./pages/AgentTerminalPage";
+import AlertsPage from "./pages/AlertsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
@@ -13,6 +14,7 @@ export default function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
+          <Route path="alerts" element={<AlertsPage />} />
           <Route path="agents/:addr" element={<AgentLayout />}>
             <Route index element={<Navigate to="metrics" replace />} />
             <Route path="metrics" element={<AgentMetricsPage />} />

@@ -37,3 +37,32 @@ export interface ServiceUnit {
   active_state: string;
   sub_state: string;
 }
+
+export type WebhookKind = "discord" | "custom";
+
+export interface WebhookTarget {
+  id: string;
+  name: string;
+  kind: WebhookKind;
+  url: string;
+  enabled: boolean;
+}
+
+export type AlertCondition =
+  | { type: "cpu_above"; percent: number }
+  | { type: "memory_above"; percent: number }
+  | { type: "load_above"; value: number }
+  | { type: "network_rx_above"; bytes_per_sec: number }
+  | { type: "network_tx_above"; bytes_per_sec: number }
+  | { type: "agent_offline" }
+  | { type: "service_not_active"; service_name: string };
+
+export interface AlertRule {
+  id: string;
+  name: string;
+  agent_addr: string | null;
+  condition: AlertCondition;
+  cooldown_seconds: number;
+  webhook_ids: string[];
+  enabled: boolean;
+}
