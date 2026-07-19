@@ -31,6 +31,8 @@ message MetricsResponse {
   uint64 mem_total_bytes = 3;
   double load_average_1m = 4;
   uint64 uptime_seconds = 5;
+  uint64 network_rx_bytes_per_sec = 6;
+  uint64 network_tx_bytes_per_sec = 7;
 }
 
 message GetMetricsHistoryRequest {}
@@ -41,6 +43,8 @@ message MetricsSample {
   uint64 mem_used_bytes = 3;
   uint64 mem_total_bytes = 4;
   double load_average_1m = 5;
+  uint64 network_rx_bytes_per_sec = 6;
+  uint64 network_tx_bytes_per_sec = 7;
 }
 
 message GetMetricsHistoryResponse {

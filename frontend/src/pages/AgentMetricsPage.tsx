@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useAgentMetrics } from "../hooks/useAgentMetrics";
 import { useMetricsHistory } from "../hooks/useMetricsHistory";
-import { formatBytes, formatUptime } from "../lib/format";
+import { formatBytes, formatBytesPerSecond, formatUptime } from "../lib/format";
 import MetricTile from "../components/MetricTile";
 import MetricChart from "../components/MetricChart";
 import styles from "./AgentMetricsPage.module.css";
@@ -17,22 +17,53 @@ export default function AgentMetricsPage() {
     [history],
   );
 
-  const cpuData = useMemo<[number[], number[]]>(
-    () => [timestamps, history.map((sample) => sample.cpu_usage_percent)],
-    [timestamps, history],
-  );
-
-  const memoryData = useMemo<[number[], number[]]>(
+  const cpuSeries = useMemo(
     () => [
-      timestamps,
-      history.map((sample) => (sample.mem_used_bytes / sample.mem_total_bytes) * 100),
+      {
+        label: "CPU",
+        colorVar: "--color-chart-1",
+        values: history.map((sample) => sample.cpu_usage_percent),
+      },
     ],
-    [timestamps, history],
+    [history],
   );
 
-  const loadData = useMemo<[number[], number[]]>(
-    () => [timestamps, history.map((sample) => sample.load_average_1m)],
-    [timestamps, history],
+  const memorySeries = useMemo(
+    () => [
+      {
+        label: "Memory",
+        colorVar: "--color-chart-2",
+        values: history.map((sample) => (sample.mem_used_bytes / sample.mem_total_bytes) * 100),
+      },
+    ],
+    [history],
+  );
+
+  const loadSeries = useMemo(
+    () => [
+      {
+        label: "Load (1m)",
+        colorVar: "--color-chart-3",
+        values: history.map((sample) => sample.load_average_1m),
+      },
+    ],
+    [history],
+  );
+
+  const networkSeries = useMemo(
+    () => [
+      {
+        label: "Download",
+        colorVar: "--color-chart-1",
+        values: history.map((sample) => sample.network_rx_bytes_per_sec),
+      },
+      {
+        label: "Upload",
+        colorVar: "--color-chart-3",
+        values: history.map((sample) => sample.network_tx_bytes_per_sec),
+      },
+    ],
+    [history],
   );
 
   return (
@@ -49,6 +80,11 @@ export default function AgentMetricsPage() {
           />
           <MetricTile label="Load (1m)" value={metrics.load_average_1m.toFixed(2)} />
           <MetricTile label="Uptime" value={formatUptime(metrics.uptime_seconds)} />
+          <MetricTile
+            label="Network"
+            value={`↓ ${formatBytesPerSecond(metrics.network_rx_bytes_per_sec)}`}
+            hint={`↑ ${formatBytesPerSecond(metrics.network_tx_bytes_per_sec)}`}
+          />
         </div>
       ) : (
         !error && <p className={styles.hint}>Loading metrics…</p>
@@ -60,23 +96,29 @@ export default function AgentMetricsPage() {
         <div className={styles.charts}>
           <MetricChart
             title="CPU usage"
-            data={cpuData}
-            colorVar="--color-chart-1"
+            timestamps={timestamps}
+            series={cpuSeries}
             yRange={[0, 100]}
             valueFormatter={(v) => `${v.toFixed(0)}%`}
           />
           <MetricChart
             title="Memory usage"
-            data={memoryData}
-            colorVar="--color-chart-2"
+            timestamps={timestamps}
+            series={memorySeries}
             yRange={[0, 100]}
             valueFormatter={(v) => `${v.toFixed(0)}%`}
           />
           <MetricChart
             title="Load average (1m)"
-            data={loadData}
-            colorVar="--color-chart-3"
+            timestamps={timestamps}
+            series={loadSeries}
             valueFormatter={(v) => v.toFixed(2)}
+          />
+          <MetricChart
+            title="Network load"
+            timestamps={timestamps}
+            series={networkSeries}
+            valueFormatter={formatBytesPerSecond}
           />
         </div>
       ) : (

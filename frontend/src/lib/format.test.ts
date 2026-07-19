@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatUptime } from "./format";
+import { formatBytes, formatBytesPerSecond, formatUptime } from "./format";
 
 describe("formatBytes", () => {
   it("converts bytes to GB with two decimals", () => {
@@ -12,6 +12,29 @@ describe("formatBytes", () => {
 
   it("rounds to the nearest hundredth", () => {
     expect(formatBytes(1.5 * 1024 ** 3)).toBe("1.50 GB");
+  });
+});
+
+describe("formatBytesPerSecond", () => {
+  it("formats sub-kilobyte rates in B/s", () => {
+    expect(formatBytesPerSecond(512)).toBe("512 B/s");
+  });
+
+  it("formats kilobyte rates in KB/s", () => {
+    expect(formatBytesPerSecond(2048)).toBe("2.0 KB/s");
+  });
+
+  it("formats megabyte rates in MB/s", () => {
+    expect(formatBytesPerSecond(5 * 1024 ** 2)).toBe("5.0 MB/s");
+  });
+
+  it("handles zero", () => {
+    expect(formatBytesPerSecond(0)).toBe("0 B/s");
+  });
+
+  it("switches units at the 1024 boundary", () => {
+    expect(formatBytesPerSecond(1023)).toBe("1023 B/s");
+    expect(formatBytesPerSecond(1024)).toBe("1.0 KB/s");
   });
 });
 

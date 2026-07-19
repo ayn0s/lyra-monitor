@@ -47,6 +47,8 @@ impl AgentService for AgentServiceImpl {
             mem_total_bytes: raw.mem_total_bytes,
             load_average_1m: raw.load_average_1m,
             uptime_seconds: raw.uptime_seconds,
+            network_rx_bytes_per_sec: raw.network_rx_bytes_per_sec,
+            network_tx_bytes_per_sec: raw.network_tx_bytes_per_sec,
         }))
     }
 
@@ -63,6 +65,8 @@ impl AgentService for AgentServiceImpl {
                 mem_used_bytes: entry.raw.mem_used_bytes,
                 mem_total_bytes: entry.raw.mem_total_bytes,
                 load_average_1m: entry.raw.load_average_1m,
+                network_rx_bytes_per_sec: entry.raw.network_rx_bytes_per_sec,
+                network_tx_bytes_per_sec: entry.raw.network_tx_bytes_per_sec,
             })
             .collect();
 

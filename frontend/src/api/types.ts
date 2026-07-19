@@ -16,6 +16,8 @@ export interface AgentMetrics {
   mem_total_bytes: number;
   load_average_1m: number;
   uptime_seconds: number;
+  network_rx_bytes_per_sec: number;
+  network_tx_bytes_per_sec: number;
 }
 
 export interface MetricsSample {
@@ -24,6 +26,8 @@ export interface MetricsSample {
   mem_used_bytes: number;
   mem_total_bytes: number;
   load_average_1m: number;
+  network_rx_bytes_per_sec: number;
+  network_tx_bytes_per_sec: number;
 }
 
 export interface ServiceUnit {

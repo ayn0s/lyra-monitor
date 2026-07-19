@@ -139,6 +139,8 @@ async fn metrics_agent(
         "mem_total_bytes": response.mem_total_bytes,
         "load_average_1m": response.load_average_1m,
         "uptime_seconds": response.uptime_seconds,
+        "network_rx_bytes_per_sec": response.network_rx_bytes_per_sec,
+        "network_tx_bytes_per_sec": response.network_tx_bytes_per_sec,
     })))
 }
 
@@ -165,6 +167,8 @@ async fn metrics_history_agent(
                 "mem_used_bytes": sample.mem_used_bytes,
                 "mem_total_bytes": sample.mem_total_bytes,
                 "load_average_1m": sample.load_average_1m,
+                "network_rx_bytes_per_sec": sample.network_rx_bytes_per_sec,
+                "network_tx_bytes_per_sec": sample.network_tx_bytes_per_sec,
             })
         })
         .collect();

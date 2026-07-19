@@ -7,13 +7,16 @@ pub struct RawMetrics {
     pub mem_total_bytes: u64,
     pub load_average_1m: f64,
     pub uptime_seconds: u64,
+    pub network_rx_bytes_per_sec: u64,
+    pub network_tx_bytes_per_sec: u64,
 }
 
 pub fn snapshot() -> Result<RawMetrics> {
     let (mem_used_bytes, mem_total_bytes) = read_mem()?;
     let load_average_1m = read_loadavg()?;
     let uptime_seconds = read_uptime()?;
-    let cpu_usage_percent = read_cpu_usage_percent()?;
+    let (cpu_usage_percent, network_rx_bytes_per_sec, network_tx_bytes_per_sec) =
+        read_cpu_and_network()?;
 
     Ok(RawMetrics {
         cpu_usage_percent,
@@ -21,6 +24,8 @@ pub fn snapshot() -> Result<RawMetrics> {
         mem_total_bytes,
         load_average_1m,
         uptime_seconds,
+        network_rx_bytes_per_sec,
+        network_tx_bytes_per_sec,
     })
 }
 
@@ -101,12 +106,56 @@ fn parse_cpu_stat_line(line: &str) -> (u64, u64) {
     (total, idle)
 }
 
-fn read_cpu_usage_percent() -> Result<f64> {
-    let (total_a, idle_a) = read_cpu_stat_total()?;
-    std::thread::sleep(std::time::Duration::from_millis(100));
-    let (total_b, idle_b) = read_cpu_stat_total()?;
+fn read_net_dev() -> Result<(u64, u64)> {
+    let content = fs::read_to_string("/proc/net/dev").context("reading /proc/net/dev")?;
+    Ok(parse_net_dev(&content))
+}
 
-    Ok(cpu_percent_from_samples(total_a, idle_a, total_b, idle_b))
+fn parse_net_dev(content: &str) -> (u64, u64) {
+    let mut rx_total = 0u64;
+    let mut tx_total = 0u64;
+
+    for line in content.lines().skip(2) {
+        let Some((iface, stats)) = line.split_once(':') else {
+            continue;
+        };
+        if iface.trim() == "lo" {
+            continue;
+        }
+
+        let fields: Vec<u64> = stats
+            .split_whitespace()
+            .filter_map(|f| f.parse::<u64>().ok())
+            .collect();
+
+        rx_total += fields.first().unwrap_or(&0);
+        tx_total += fields.get(8).unwrap_or(&0);
+    }
+
+    (rx_total, tx_total)
+}
+
+fn read_cpu_and_network() -> Result<(f64, u64, u64)> {
+    let (total_a, idle_a) = read_cpu_stat_total()?;
+    let (rx_a, tx_a) = read_net_dev()?;
+    let started_at = std::time::Instant::now();
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    let elapsed_secs = started_at.elapsed().as_secs_f64();
+    let (total_b, idle_b) = read_cpu_stat_total()?;
+    let (rx_b, tx_b) = read_net_dev()?;
+
+    let cpu_usage_percent = cpu_percent_from_samples(total_a, idle_a, total_b, idle_b);
+    let rx_bytes_per_sec = bytes_per_sec(rx_a, rx_b, elapsed_secs);
+    let tx_bytes_per_sec = bytes_per_sec(tx_a, tx_b, elapsed_secs);
+
+    Ok((cpu_usage_percent, rx_bytes_per_sec, tx_bytes_per_sec))
+}
+
+fn bytes_per_sec(before: u64, after: u64, elapsed_secs: f64) -> u64 {
+    if elapsed_secs <= 0.0 {
+        return 0;
+    }
+    (after.saturating_sub(before) as f64 / elapsed_secs) as u64
 }
 
 fn cpu_percent_from_samples(total_a: u64, idle_a: u64, total_b: u64, idle_b: u64) -> f64 {
@@ -204,5 +253,39 @@ mod tests {
     #[test]
     fn cpu_percent_is_zero_when_no_time_elapsed() {
         assert_eq!(cpu_percent_from_samples(1000, 500, 1000, 500), 0.0);
+    }
+
+    #[test]
+    fn parses_net_dev_sums_non_loopback_interfaces() {
+        let content = "\
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo:  1000       5    0    0    0     0          0         0     1000       5    0    0    0     0       0          0
+  eth0: 20000      50    0    0    0     0          0         0    10000      40    0    0    0     0       0          0
+  eth1:  5000      10    0    0    0     0          0         0     2000      15    0    0    0     0       0          0
+";
+        let (rx, tx) = parse_net_dev(content);
+        assert_eq!(rx, 25000);
+        assert_eq!(tx, 12000);
+    }
+
+    #[test]
+    fn parses_net_dev_empty_content() {
+        assert_eq!(parse_net_dev(""), (0, 0));
+    }
+
+    #[test]
+    fn bytes_per_sec_computes_rate() {
+        assert_eq!(bytes_per_sec(1000, 2000, 0.5), 2000);
+    }
+
+    #[test]
+    fn bytes_per_sec_is_zero_on_zero_elapsed() {
+        assert_eq!(bytes_per_sec(1000, 2000, 0.0), 0);
+    }
+
+    #[test]
+    fn bytes_per_sec_never_underflows_on_counter_reset() {
+        assert_eq!(bytes_per_sec(2000, 1000, 0.5), 0);
     }
 }

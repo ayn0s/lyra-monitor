@@ -3,24 +3,31 @@ import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import styles from "./MetricChart.module.css";
 
-interface MetricChartProps {
-  title: string;
-  data: uPlot.AlignedData;
+export interface MetricSeries {
+  label: string;
   /** Name of a CSS custom property (e.g. "--color-chart-1"), resolved at render time. */
   colorVar: string;
+  values: number[];
+}
+
+interface MetricChartProps {
+  title: string;
+  timestamps: number[];
+  series: MetricSeries[];
   valueFormatter?: (value: number) => string;
   yRange?: [number, number];
 }
 
 export default function MetricChart({
   title,
-  data,
-  colorVar,
+  timestamps,
+  series,
   valueFormatter,
   yRange,
 }: MetricChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const plotRef = useRef<uPlot | null>(null);
+  const seriesKey = series.map((s) => `${s.label}:${s.colorVar}`).join("|");
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -28,7 +35,8 @@ export default function MetricChart({
     const style = getComputedStyle(document.documentElement);
     const mutedColor = style.getPropertyValue("--color-text-muted").trim();
     const borderColor = style.getPropertyValue("--color-border").trim();
-    const color = style.getPropertyValue(colorVar).trim();
+
+    const data: uPlot.AlignedData = [timestamps, ...series.map((s) => s.values)];
 
     const opts: uPlot.Options = {
       width: containerRef.current.clientWidth,
@@ -40,14 +48,18 @@ export default function MetricChart({
       },
       series: [
         {},
-        {
-          label: title,
-          stroke: color,
-          width: 2,
-          fill: `${color}22`,
-          points: { show: false },
-          value: (_u, v) => (v == null ? "–" : (valueFormatter?.(v) ?? String(v))),
-        },
+        ...series.map((s) => {
+          const color = style.getPropertyValue(s.colorVar).trim();
+          return {
+            label: s.label,
+            stroke: color,
+            width: 2,
+            fill: `${color}22`,
+            points: { show: false },
+            value: (_u: uPlot, v: number | null) =>
+              v == null ? "–" : (valueFormatter?.(v) ?? String(v)),
+          };
+        }),
       ],
       axes: [
         { stroke: mutedColor, grid: { stroke: borderColor, width: 1 } },
@@ -75,11 +87,11 @@ export default function MetricChart({
       plot.destroy();
       plotRef.current = null;
     };
-  }, [title, colorVar]);
+  }, [title, seriesKey]);
 
   useEffect(() => {
-    plotRef.current?.setData(data);
-  }, [data]);
+    plotRef.current?.setData([timestamps, ...series.map((s) => s.values)]);
+  }, [timestamps, series]);
 
   return (
     <div className={styles.chart}>
